@@ -1,0 +1,642 @@
+/***
+* This function formats the Offer Code Mapping worksheet to be readable, getting rid of empty rows and highlighting shared pricing.
+*/
+function formatSheet(worksheet: ExcelScript.Worksheet) {
+  // iterate through all of the occupied lines in the worksheet
+  for (let k = 3; k < (worksheet.getUsedRange().getRowCount() + 1); ++k) {
+    // get value of each region's term/price
+    let usa = worksheet.getRange("C" + k).getValue().toString()
+    let can = worksheet.getRange("D" + k).getValue().toString()
+    let row = worksheet.getRange("E" + k).getValue().toString()
+
+    // if all three pricings aren't blank
+    if ((usa != "") && (can != "") && (row != "")) {
+      // if all three term/prices are equal, merge the cells and highlight
+      if ((usa == can) && (usa == row)) {
+        worksheet.getRange("C" + k + ":E" + k).merge(true)
+
+        worksheet.getRange("C" + k + ":E" + k).getFormat().getFill().setColor("#A6A6A6");
+      }
+      // if usa and can term/prices are equal, merge the cells and highlight
+      else if ((usa == can)) {
+        worksheet.getRange("C" + k + ":D" + k).merge(true)
+
+        worksheet.getRange("C" + k + ":D" + k).getFormat().getFill().setColor("#A6A6A6");
+      }
+      // if can and row term/prices are equal, merge the cells and highlight
+      else if (can == row) {
+        worksheet.getRange("D" + k + ":E" + k).merge(true)
+
+        worksheet.getRange("D" + k + ":E" + k).getFormat().getFill().setColor("#A6A6A6");
+      }
+    }
+
+  }
+
+  // Auto fit the columns of all cells on sheet
+  worksheet.getRange().getFormat().autofitColumns();
+
+  //center all columns
+  worksheet.getRange().getFormat().setHorizontalAlignment(ExcelScript.HorizontalAlignment.center);
+
+  worksheet.getRange().getFormat().setIndentLevel(0);
+  // Set vertical alignment to ExcelScript.VerticalAlignment.bottom for range P52 on worksheet
+  worksheet.getRange().getFormat().setVerticalAlignment(ExcelScript.VerticalAlignment.center);
+  worksheet.getRange().getFormat().setIndentLevel(0);
+  // Set wrap text to false for range P52 on worksheet
+  worksheet.getRange().getFormat().setWrapText(false);
+  // Set text orientation to 0 for range P52 on worksheet
+  worksheet.getRange().getFormat().setTextOrientation(0);
+}
+
+/*** 
+ * This function sections offers, creating a border around indiviidual offers.
+*/
+function setBorder(worksheet: ExcelScript.Worksheet, borderArea: string) {
+  worksheet.getRange(borderArea).getFormat().getRangeBorder(ExcelScript.BorderIndex.diagonalDown).setStyle(ExcelScript.BorderLineStyle.none);
+  // Set border for range borderArea on worksheet
+  worksheet.getRange(borderArea).getFormat().getRangeBorder(ExcelScript.BorderIndex.diagonalUp).setStyle(ExcelScript.BorderLineStyle.none);
+  // Set border for range borderArea on worksheet
+  worksheet.getRange(borderArea).getFormat().getRangeBorder(ExcelScript.BorderIndex.edgeLeft).setStyle(ExcelScript.BorderLineStyle.continuous);
+  worksheet.getRange(borderArea).getFormat().getRangeBorder(ExcelScript.BorderIndex.edgeLeft).setWeight(ExcelScript.BorderWeight.thin);
+  // Set border for range borderArea on worksheet
+  worksheet.getRange(borderArea).getFormat().getRangeBorder(ExcelScript.BorderIndex.edgeTop).setStyle(ExcelScript.BorderLineStyle.continuous);
+  worksheet.getRange(borderArea).getFormat().getRangeBorder(ExcelScript.BorderIndex.edgeTop).setWeight(ExcelScript.BorderWeight.thin);
+  // Set border for range borderArea on worksheet
+  worksheet.getRange(borderArea).getFormat().getRangeBorder(ExcelScript.BorderIndex.edgeBottom).setStyle(ExcelScript.BorderLineStyle.continuous);
+  worksheet.getRange(borderArea).getFormat().getRangeBorder(ExcelScript.BorderIndex.edgeBottom).setWeight(ExcelScript.BorderWeight.thin);
+  // Set border for range borderArea on worksheet
+  worksheet.getRange(borderArea).getFormat().getRangeBorder(ExcelScript.BorderIndex.edgeRight).setStyle(ExcelScript.BorderLineStyle.continuous);
+  worksheet.getRange(borderArea).getFormat().getRangeBorder(ExcelScript.BorderIndex.edgeRight).setWeight(ExcelScript.BorderWeight.thin);
+  // Set border for range borderArea on worksheet
+  worksheet.getRange(borderArea).getFormat().getRangeBorder(ExcelScript.BorderIndex.insideVertical).setStyle(ExcelScript.BorderLineStyle.none);
+  // Set border for range borderArea on worksheet
+  worksheet.getRange(borderArea).getFormat().getRangeBorder(ExcelScript.BorderIndex.insideHorizontal).setStyle(ExcelScript.BorderLineStyle.none);
+}
+
+/***
+ * This funct combines subsequent pricing when there is a shared term with a subsequent term below. ESP with USA and then CAN, ROW.
+ * Only works if the following term/price matches the current row's CAN, ROW term/price.
+ */
+function formatSubsequentPricing(worksheet: ExcelScript.Worksheet, usatermprice: string, cantermprice: string, rowtermprice: string, currentRow: number) {
+  // Find following USA term/price
+  let subPricingUSA = worksheet.getRange("C" + (currentRow + 1)).getValue()
+
+  // compare following usa term/price to CAN and ROW current pricing, if they are equal, delete the current value from CAN and ROW's current row and move them to match the subsequent USA term/pricing's row
+  if ((subPricingUSA == cantermprice) && (subPricingUSA == rowtermprice)) {
+    worksheet.getRange("D" + currentRow).setValue("")
+    worksheet.getRange("D" + (currentRow + 1)).setValue(subPricingUSA)
+    worksheet.getRange("E" + currentRow).setValue("")
+    worksheet.getRange("E" + (currentRow + 1)).setValue(subPricingUSA)
+  }
+}
+
+/***
+ * This function formats the length of Offer Codes and Promotions by shortening phrases and removing superfluous characters when necessary.
+ */
+function formatLength(name: string, formatType: string) {
+  
+  // set step to track which step loop is on
+  let step = 0
+
+  // while loop iterates as long as step < 3, to conduct each step in attempt to shorten the length of the name string while keeping specificity as much as possible
+  while (step < 3) {
+
+    // depending on the step variable, shorten the name string by removing/replacing indicated substring
+    switch (step) {
+      case 0:
+        // while there is any instance of "FOR", remove it from the string
+        while (name.indexOf("FOR") != -1)
+        {
+          name = name.replace("FOR", "")
+        }
+        
+        break;
+      case 1:
+        // while there is any instance of ".00" or ".", remove them from the string
+        while ((name.indexOf(".") != -1) || (name.indexOf(".00") != -1)) {
+          name = name.replace(".00", "")
+          name = name.replace(".", "")
+        }
+
+        break;
+      case 2:
+        // while there is any instance of regional or benevolence indicators, shorten them
+        while ((name.indexOf("USA") != -1) || (name.indexOf("CAN") != -1) || (name.indexOf("ROW") != -1) || (name.indexOf("-BENE") != -1)) {
+          name = name.replace("USA", "U")
+          name = name.replace("CAN", "C")
+          name = name.replace("ROW", "R")
+
+          name = name.replace("-BENE", "-B")
+        }
+        break;
+    }
+
+    // according to the name type, shorten length
+    // choice has a length constraint of 13
+    if ((name.length > 13) && (step < 2) && (formatType == "CHOICE")) {
+      step++
+    }
+    // offer codes have a name length constraint of 11
+    else if ((name.length > 11) && (step < 2) && (formatType == "OFFER")) {
+      step++
+    }
+    else {
+      // return formatted string
+      return name
+    }
+  }
+}
+
+/***
+ * This function sets the choice name for each offer line.
+ */
+function setChoice(worksheet: ExcelScript.Worksheet, currentRow: number) {
+  // set needed variables
+  let read = ""
+  let usatermprice = ""
+  let cantermprice = ""
+  let rowtermprice = ""
+  let renewal = ""
+
+  // pull term/pricing for each region
+  usatermprice = worksheet.getRange("C" + currentRow).getValue().toString()
+  cantermprice = worksheet.getRange("D" + currentRow).getValue().toString()
+  rowtermprice = worksheet.getRange("E" + currentRow).getValue().toString()
+
+  // if USA's term/price is not empty
+  if (usatermprice != "") {
+    // check renewal type and set renewal variable accordingly
+    switch (worksheet.getRange("B" + currentRow).getValue()) {
+      case "C = Auto Renewal / Auto Charge":
+        renewal = "AR"
+        break;
+      case "Y = Regular Promote":
+        renewal = "SR"
+        break;
+      case "":
+        renewal = worksheet.getRange("H" + (currentRow - 1)).getValue().toString().substring(0, 2)
+        break;
+    }
+    
+    // add value of USA's term/price to read value
+    read += usatermprice
+
+    // check if USA's term/price is equal to CAN, but not equal to ROW, if so add USACAN to designate that these two values are the same in the choice
+    if ((usatermprice == cantermprice) && (usatermprice != rowtermprice)) {
+      read += "USACAN"
+    }
+    // check if USA's term/price is equal to ROW, but not equal to CAN, if so add USAROW to designate that these two values are the same in the choice
+    else if ((usatermprice != cantermprice) && (usatermprice == rowtermprice)) {
+      read += "USAROW"
+    }
+    // check if USA's term/price is not equal to CAN or ROW, if so add USA to designate that this choice is unique to USA pricing
+    else if ((usatermprice != cantermprice) && (usatermprice != rowtermprice)) {
+      read += "USA"
+      formatSubsequentPricing(worksheet, usatermprice, cantermprice, rowtermprice, currentRow)
+      cantermprice = worksheet.getRange("D" + currentRow).getValue().toString()
+      rowtermprice = worksheet.getRange("E" + currentRow).getValue().toString()
+    }
+  }
+
+  // if CAN's price/term is not empty and it is not equal to USA's
+  if ((cantermprice != "") && (cantermprice != usatermprice)) {
+    // check renewal type and set renewal variable accordingly
+    switch (worksheet.getRange("B" + currentRow).getValue()) {
+      case "C = Auto Renewal / Auto Charge":
+        renewal = "AR"
+        break;
+      case "Y = Regular Promote":
+        renewal = "SR"
+        break;
+      case "":
+        renewal = worksheet.getRange("H" + (currentRow - 1)).getValue().toString().substring(0, 2)
+        break;
+    }
+
+    // add value of CAN's term/price to read value
+    read += cantermprice
+
+    // if CAN's term/price equals ROW's, add CANROW to designate that this choice is unique to CAN, ROW
+    if ((cantermprice == rowtermprice)) {
+      read += "CANROW"
+    }
+    // else add CAN as this price/term is unique to CAN and should reflect this in the choice
+    else {
+      read += "CAN"
+    }
+  }
+  // if ROW term/price is not empty and it's not equal to can
+  if ((rowtermprice != "") && (rowtermprice != cantermprice) && (rowtermprice != usatermprice)) {
+    // check renewal type and set renewal variable accordingly
+    switch (worksheet.getRange("B" + currentRow).getValue()) {
+      case "C = Auto Renewal / Auto Charge":
+        renewal = "AR"
+        break;
+      case "Y = Regular Promote":
+        renewal = "SR"
+        break;
+      case "":
+        renewal = worksheet.getRange("H" + (currentRow - 1)).getValue().toString().substring(0, 2)
+        break;
+    }
+    // add ROW termprice to read
+    read += rowtermprice
+
+    // add ROW as this price / term is unique to ROW and should reflect this in the choice
+    read += "ROW"
+  }
+
+  // check for benevolence marker and add designation
+  if (worksheet.getRange("A" + currentRow).getValue().toString().toLowerCase().includes("benevolence")) {
+    read += "-BENE"
+  }
+
+  // replace occurences of /$ with FOR
+  while (read.indexOf("/$") != -1)
+  {
+    read = read.replace("/$", "FOR")
+  }
+
+  // add renewal code to read value
+  read = renewal + read
+  
+  // if read is too long, format
+  if (read.length < 13) {
+    worksheet.getRange("H" + currentRow).setValue(read)
+  }
+  else {
+    read = formatLength(read, "CHOICE")
+    worksheet.getRange("H" + currentRow).setValue(read)
+  }
+
+  // if read length was longer than 16 characters, highlight cell
+  if (read.length > 16) {
+    worksheet.getRange("H" + currentRow).getFormat().getFill().setColor("#ffff00");
+  }
+}
+
+/***
+ * This method sets the names of offer codes and if renewal type is auto, copies choice to chain cell.
+ */
+function setOfrCode(worksheet: ExcelScript.Worksheet) {
+  let currentRow = 3
+
+  // pull in publication designation to be used for naming
+  let publication = worksheet.getRange("A1").getValue().toString()
+
+  // iterate through used portion of the worksheet
+  for (currentRow; currentRow < (worksheet.getUsedRange().getRowCount() + 1); ++currentRow) {
+    // create obsRow variable that will be used to keep track of each offer
+    let obsRow = currentRow
+    let ofrCode = ""
+
+    // pull in renewal type
+    let renewal = worksheet.getRange("H" + obsRow).getValue().toString().substring(0, 2)
+    
+    // while funciton has not hit an empty row, ie a row without a agreement choice
+    while (worksheet.getRange("H" + obsRow).getValue().toString() != "") {
+      // newChoice equals each Agreement choice to be concatinated
+      let newChoice = worksheet.getRange("H" + obsRow).getValue().toString()
+
+      // format string to be added to offer
+      newChoice = newChoice.replace(renewal, "")
+      newChoice = newChoice.replace("FOR", "")
+
+      // add string to offer code
+      ofrCode += newChoice
+      
+      // iterate down a row to be checked for another choice to add to the offer
+      obsRow++
+    }
+
+    // if the offer code is not empty and initial row's renewal value is not empty
+    if ((ofrCode != "") && (worksheet.getRange("B" + currentRow).getValue().toString() != "")) {
+
+      // format the length of the offer code
+      ofrCode = formatLength(ofrCode, "OFFER")
+      // add publication code and renewal type to the offer code
+      ofrCode = publication + renewal + ofrCode
+      // set cell value on current row to the created offer code
+      worksheet.getRange("I" + currentRow).setValue(ofrCode)
+
+      // if the offer code is above max length, highlight cell
+      if (ofrCode.length > 16) {
+        worksheet.getRange("I" + currentRow).getFormat().getFill().setColor("#ffff00");
+      }
+
+      // if renewal type is auto, copy choice to chain
+      if (worksheet.getRange("B" + currentRow).getValue().toString() == "C = Auto Renewal / Auto Charge") {
+        // copies value from choice cell on current row to chain cell
+        worksheet.getRange("J" + currentRow).setValue(worksheet.getRange("H" + currentRow).getValue())
+
+        // creates variable to count subsequent cells in an offer
+        let n = currentRow + 1				
+        // get the value of the next choice's name
+				let nextRow = worksheet.getRange("H" + n).getValue().toString()
+
+        // if the nextRow value is empty, there are no other choices to be added to the offer, so while nextRow is not empty, continue loop
+				while(nextRow != "")
+				{
+          // set chain cell to nextRow's value on row n
+					worksheet.getRange("J" + n).setValue(nextRow)
+          // increment row
+					n++
+          // get next value in choice column
+					nextRow = worksheet.getRange("H" + n).getValue().toString()			
+				}
+      }
+      // merge cells in the offer code column as the related choices will share a code
+      worksheet.getRange("I" + currentRow + ":I" + (obsRow - 1)).merge(false)
+
+      // if the cell is not already highlighted, highlight to show shared cell
+      if (worksheet.getRange("I" + currentRow).getFormat().getFill().getColor().toString() != "#FFFF00") {
+        worksheet.getRange("I" + currentRow).getFormat().getFill().setColor("#A6A6A6")
+      }
+      // set a border around cells related to a single offer
+      setBorder(worksheet, "A" + currentRow + ":J" + (obsRow - 1))
+    }
+  }
+}
+
+/***
+ * This function creates naming conventions for the choice and promotion offer cells, then formats the worksheet,  using the setChoice, setOfrCode, formatSheet functions.
+ */
+function createNamingConventions(worksheet: ExcelScript.Worksheet) {
+  // select the offer code mapping worksheet
+  let offer_code_mapping = worksheet
+
+  // use variable to check rows
+  let currentRow = 3
+
+  // iterate over document
+  for (currentRow; currentRow < (offer_code_mapping.getUsedRange().getRowCount() + 1); ++currentRow) {
+    // use the setChoice function to create choice names for worksheet
+    setChoice(offer_code_mapping, currentRow)
+  }
+
+  // use the setOfrCode function and the created choice names to create offer codes for the worksheet
+  setOfrCode(offer_code_mapping)
+
+  // format the worksheet using the formatSheet function
+  formatSheet(offer_code_mapping)
+}
+
+/***
+ * This function iterates throught he worksheet and removes lines related to offers that appear more than once.
+ */
+function removeDuplicates(worksheet: ExcelScript.Worksheet) {
+  
+  // create an array to hold duplicate row numbers
+  let duplicates: number[] = []
+
+  // iterate through worksheet's used rows
+  for (let i = 3; i < worksheet.getUsedRange().getRowCount() + 1; ++i) {
+    // if an offer's beginning row is not empty, then it is the beginning of an offer
+    // skip if the row is already in the duplicate array
+    if ((worksheet.getRange("A" + i).getValue().toString() != "") && (worksheet.getRange("I" + i).getValue().toString() != "") && (duplicates.indexOf(i) == -1)) {
+      // this variable saves the name of the first occurrance of a offer code's name
+      let firstOcc = worksheet.getRange("I" + i).getValue().toString()
+      // create boolean variable that initializes to false
+      let wasAdded = false
+
+      // if renewal type is not empty, then it is the first line of an offer
+      if (worksheet.getRange("B" + i).getValue().toString() != "") {
+        for (let j = i + 1; j < worksheet.getUsedRange().getRowCount(); ++j) {
+          // set comparitor value to this next row to compare it to original offer
+          let comparitor = worksheet.getRange("I" + j).getValue()
+
+          // if the new offer name is equal to the original, it is a duplicate
+          if (firstOcc == comparitor) {
+            // push row number onto array that holds duplicate rows
+            duplicates.push(j)
+            // create variable that will be used to check subsequent rows
+            let m = j + 1
+            // get next row value for offer code
+            let nextRow = worksheet.getRange("I" + (m)).getValue().toString()
+            
+            // while subsequent rows are part of duplicate offer (ie offer code is considered empty), add them to array, provided they are also in range of used values of the array.
+            while ((nextRow == "" && (m <= worksheet.getUsedRange().getRowCount()))) {
+              // adds associated rows that are part of duplicate offers to array
+              duplicates.push(m)
+
+              // increment variable for checking subsequent rows
+              m++
+              // check next row
+              nextRow = worksheet.getRange("B" + (m)).getValue().toString()
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  // creates variable that will keep track of how many rows need to be deleted
+  let dupelength = duplicates.length
+  // sorts the duplicates array in ascending numerical order
+  duplicates.sort((a, b) => a - b)
+  
+  // iterate through duplicate array to delete duplicate offer code rows
+  for (let k = 0; k < dupelength; ++k) {
+    // removes duplicate rows, using number values from the end of the array (which is the bottom rows of the document)
+    if (duplicates.length != 0) {
+      // sets the last variable to the last number in the duplicates array and removes this value from the array
+      let last = duplicates.pop()
+      // deletes the row of the last value
+      worksheet.getRange(last + ":" + last).delete(ExcelScript.DeleteShiftDirection.up)
+    }
+  }
+
+  // iterate throguh document to remove empty rows
+  for (let k = worksheet.getUsedRange().getRowCount() + 1; k > 3; --k) {
+    // delete rows without a choice created, ie empty rows
+    if (worksheet.getRange("H" + k).getValue().toString() == "") {
+      worksheet.getRange(k + ":" + k).delete(ExcelScript.DeleteShiftDirection.up)
+    }
+  }
+}
+
+/***
+ * Main function
+ */
+function main(workbook: ExcelScript.Workbook) {
+  // set key sheet to variable
+  let keySheet = workbook.getActiveWorksheet()
+
+  // Add a new worksheet
+  let offer_code_mapping = workbook.addWorksheet("Offer Code Mapping");
+
+  // Set format for all cells on offer mapping sheet
+  offer_code_mapping.getRange().setNumberFormatLocal("@");
+
+  // set app name designation for offer code mapping
+  let app_name = keySheet.getName().toString().substring(0, 3)
+
+  // set app name on top left corner of offer code mapping sheet
+  offer_code_mapping.getRange("A1").setValue(app_name)
+
+  // Set range column criteria
+  offer_code_mapping.getRange("B2:J2").setValues([["Core Renewal Type", "US ", "CAN ", "ROW ", "", "No Premiums ", "Subscription Choice", "Offer Code", "Subscription Chain"]]);
+
+  //set indexes for relevant columns
+  // description
+  let descriptionColumn = "D"
+
+  // SNGLAUTRNL
+  let snglautrnlColumns = "N"
+
+  // UCSHTRM1
+  let ucshtrmColumns = ["P", "AB", "AN", "AZ", "BL"]
+
+  // UCSHVAL1
+  let ucshvalColumns = ["Q", "AC", "AO", "BA", "BM"]
+
+  // CCSHTRM1
+  let ccshtrmColumns = ["R", "AD", "AP", "BB", "BN"]
+
+  // CCSHVAL1
+  let ccshvalColumns = ["S", "AE", "AQ", "BC", "BO"]
+
+  // FCSHTRM1
+  let fcshtrmColumns = ["T", "AF", "AR", "BD", "BP"]
+
+  // FCSHVAL1	
+  let fcshvalColumns = ["U", "AG", "AS", "BE", "BQ"]
+
+  // variables needed for data translation
+  let currentRow = 2 // starts at 2 to avoid column headers
+  let mappingRow = 3 // starts at 3 to avoid column headers on mapping
+
+  // create boolean value to track change, init change to false
+  let change = false
+
+  // iterate through MOREKEY sheet
+  for (let j = currentRow; j < (keySheet.getUsedRange().getRowCount() + 1); ++j) {
+    // write name in margin, ignorning if starting with # or ending with i
+    let keyCode = keySheet.getRange("B" + currentRow).getValue().toString()
+
+    if ((keyCode.substring(0, 1) == "#") || (keyCode.substring(keyCode.length - 1, keyCode.length) == "I")) {
+      //	ignore row
+      currentRow += 1
+    }
+    // check if description contains benevolence
+    else {
+      if (keySheet.getRange("D" + currentRow).getValue().toString().toLowerCase().includes("benevolence")) {
+        offer_code_mapping.getRange("A" + mappingRow).setValue(keySheet.getRange("B" + currentRow).getValue() + " - Benevolence")
+      }
+      else {
+        offer_code_mapping.getRange("A" + mappingRow).setValue(keyCode)
+      }
+
+      // check renewal type
+      // write type according to conversion from Column N
+      // N, Blank translate to Y = Regular Promote
+      // E, R translate to C = Auto Renewal / Auto Charge
+      // if description contains auto
+      switch (keySheet.getRange("N" + currentRow).getValue()) {
+        case "N":
+          offer_code_mapping.getRange("B" + mappingRow).setValue("Y = Regular Promote")
+          break;
+        case "E":
+          offer_code_mapping.getRange("B" + mappingRow).setValue("C = Auto Renewal / Auto Charge")
+          break;
+        case "R":
+          offer_code_mapping.getRange("B" + mappingRow).setValue("C = Auto Renewal / Auto Charge")
+          break;
+        default:
+          if (keySheet.getRange("D" + currentRow).getValue().toString().toLowerCase().includes("auto")) {
+            offer_code_mapping.getRange("B" + mappingRow).setValue("C = Auto Renewal / Auto Charge")
+          }
+          else {
+            offer_code_mapping.getRange("B" + mappingRow).setValue("Y = Regular Promote")
+          }
+          break;
+      }
+
+      // check prices and translate to offer worksheet
+      for (let i = 0; i < ucshtrmColumns.length; ++i) {
+        // create/set values for USA term and price
+        let usaterm = keySheet.getRange(ucshtrmColumns[i] + currentRow).getValue().toString()
+        let usaprice = keySheet.getRange(ucshvalColumns[i].toString() + currentRow).getValue().toString()
+        let usatermprice = ""
+
+        // create/set values for CAN term and price
+        let canterm = keySheet.getRange(ccshtrmColumns[i] + currentRow).getValue().toString()
+        let canprice = keySheet.getRange(ccshvalColumns[i] + currentRow).getValue(). toString()
+        let cantermprice = ""
+
+        // create/set values for ROW term and price
+        let rowterm = keySheet.getRange(fcshtrmColumns[i] + currentRow).getValue().toString()
+        let rowprice = keySheet.getRange(fcshvalColumns[i] + currentRow).getValue().toString()
+        let rowtermprice = ""
+
+        // check if the term for USA is 0 or if price is 999, if so skip
+        if ((usaterm != "0") && (usaprice != "999")) {
+          // set term price
+          usatermprice = usaterm + "/$" + usaprice
+          change = true
+        }
+
+        // check if the term for CAN is 0 or if price is 999, if so skip
+        if ((canterm != "0") && (canprice != "999")) {
+          cantermprice = canterm + "/$" + canprice
+          change = true
+        }
+
+        // check if the term for FOR is 0 or if price is 999, if so skip
+        if ((rowterm != "0") && (rowprice != "999")) {
+          rowtermprice = rowterm + "/$" + rowprice
+          change = true
+        }
+
+        if ((usatermprice != "1/$1") && (cantermprice == "1/$1") && (rowtermprice == "1/$1"))
+        {
+          cantermprice = ""
+          rowtermprice = ""
+        }
+
+        if ((usatermprice == "1/$1") && (cantermprice != "1/$1") && (rowtermprice == "1/$1")) {
+          usatermprice = ""
+          rowtermprice = ""
+        }
+
+        if ((usatermprice == "1/$1") && (cantermprice == "1/$1") && (rowtermprice != "1/$1")) {
+          usatermprice = ""
+          cantermprice = ""
+        }
+
+        // if a row has a value to be added
+        if (change) {
+          // set Column C at the mapping row to the pulled value of term/price for USA
+          offer_code_mapping.getRange("C" + mappingRow).setValue(usatermprice)
+
+          // set Column C at the mapping row to the pulled value of term/price for CAN
+          offer_code_mapping.getRange("D" + mappingRow).setValue(cantermprice)
+
+          // set Column C at the mapping row to the pulled value of term/price for FOR
+          offer_code_mapping.getRange("E" + mappingRow).setValue(rowtermprice)
+
+          // increment the mapping row
+          mappingRow += 1
+        }
+
+        // iterate mapping row for empty first row
+        if ((i == 0) && !(change)) {
+          mappingRow += 1
+        }
+
+        // set change to false for next loop
+        change = false
+      }
+
+      // iterate both rows to begin checking a new row and writing on a new row
+      mappingRow += 1
+      currentRow += 1
+    }
+  }
+
+  // use createNamingConventions function to begin writing namingConventionsFor Choices and Offer Codes, and format sheet
+  createNamingConventions(offer_code_mapping)
+  // remove duplicates from sheet
+  removeDuplicates(offer_code_mapping)
+}
